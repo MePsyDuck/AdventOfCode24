@@ -11,7 +11,7 @@ def main():
             if a != 0:
                 p = set()
                 perimeter(grid2, set(), plant, i, j, p)
-                s = sides(grid2 ,p, plant)
+                s = sides(grid2, p, plant)
                 price += a * s
                 print(plant, a, s)
 
@@ -69,19 +69,25 @@ def sides(grid, p, plant):
         while (x, j) in p:
             h.add((x, j))
             j -= 1
-        if len(sh) == 1:
-            if grid[x-1][y] == plant or grid[x+1][y] == plant:
+        if len(h) == 1:
+            if safe_get(grid, x - 1, y) == plant or safe_get(grid, x + 1, y) == plant:
                 sh.add(frozenset(h))
         else:
             sh.add(frozenset(h))
-        if len(sv) == 1:
-            if grid[x][y-1] == plant or grid[x][y+1] == plant:
+        if len(v) == 1:
+            if safe_get(grid, x, y - 1) == plant or safe_get(grid, x, y + 1) == plant:
                 sv.add(frozenset(v))
         else:
             sv.add(frozenset(v))
     print([list(x) for x in sh])
     print([list(x) for x in sv])
     return len(sh) + len(sv)
+
+
+def safe_get(grid, x, y):
+    if 0 <= x < len(grid) and 0 <= y < len(grid[0]):
+        return grid[x][y]
+    return None
 
 
 if __name__ == '__main__':
