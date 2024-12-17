@@ -1,48 +1,44 @@
 def main():
     with open('input.txt') as f:
         disk = [int(c) for c in f.read().strip()]
-
-    nd = move(disk)
-    # print(nd)
-    print(checksum(nd))
+    checksum = defrag(disk)
+    print(checksum)
 
 
-def move(disk):
-    new_disk = []
+def defrag(disk):
+    backup = disk.copy()
+    checksum = 0
+    index = -1
 
     i = 0
-    j = len(disk) - 1
     while i < len(disk):
         if i % 2 == 0:
-            for _ in range(disk[i]):
-                new_disk.append(i // 2)
-            i += 1
-        elif j % 2 == 1:
-            disk[j] = 0
-            j -= 1
-        else:
-            while disk[i] > 0 and disk[j] > 0:
-                new_disk.append(j // 2)
-                disk[i] -= 1
-                disk[j] -= 1
-
             if disk[i] == 0:
-                i += 1
+                index += backup[i]
             else:
-                j -= 1
-    return new_disk
+                checksum += (i // 2) * sum_integers(index, disk[i])
+                index += disk[i]
+        else:
+            j = len(disk) - 1
+            while j > i and disk[i] > 0:
+                if 0 < disk[j] <= disk[i]:
+                    checksum += (j // 2) * sum_integers(index, disk[j])
+                    disk[i] -= disk[j]
+                    index += disk[j]
+                    disk[j] = 0
+                else:
+                    j -= 2
+            index += disk[i]
+        i += 1
+
+    return checksum
 
 
-def checksum(disk):
-    total = 0
-    for i in range(len(disk)):
-        total += disk[i] * i
-    return total
-
+def sum_integers(index, step):
+    return (step * (index * 2 + step + 1)) // 2
 
 if __name__ == '__main__':
     import time
-
     start = time.perf_counter()
     main()
     end = time.perf_counter()
