@@ -1,102 +1,54 @@
-import multiprocessing as mp
-
-
 def main():
-    reg_b = 0
-    reg_c = 0
-    program = []
-
     with open('input.txt') as f:
         for line in f.readlines():
-            if line.startswith('Register A'):
-                continue
-            elif line.startswith('Register B'):
-                reg_b = int(line[11:])
-            elif line.startswith('Register C'):
-                reg_c = int(line[11:])
-            elif line.startswith('Program'):
+            if line.startswith('Program'):
                 program = [int(i) for i in line[9:].split(',')]
-
-    parallel_solver(reg_b, reg_c, program)
-    # for i in range(1 << 32):
-    #     if solve(i, reg_b, reg_c, program):
-    #         print(i)
-    #         break
-    #     if i % 10000 == 0:
-    #         print(i)
+    result = []
+    solve(program, 0, len(program) - 1, result)
+    print(min(result))
 
 
-def solve_task(start, end, reg_b, reg_c, program, stop_flag):
-    for i in range(start, end):
-        if stop_flag.is_set():
-            break
-        if solve(i, reg_b, reg_c, program):
-            print(f"Solution found: {i}")
-            stop_flag.set()
-            break
-        if i % 1000000 == 0:
-            print(f"Checked up to {i} in range ({start}, {end})")
+def solve(prg, last_a, j, result):
+    """
+    Generated via reverse engineering
+    My input is : 2,4,1,5,7,5,4,3,1,6,0,3,5,5,3,0
+    Where each operation is
+    2,4 : b = a % 8
+    1,5 : b = b ^ 5
+    7,5 : c = a // (2 ** b)
+    4,3 : b = b ^ c
+    1,6 : b = b ^ 6
+    0,3 : a = a // 8
+    5,5 : print b % 8
+    3,0 : goto beginning if a!=0
 
+    Reversing above operations (bottom to top) abd substituting values
+        b = b ^ 6
+        b = (b ^ c) ^ 6
+        b = (b ^ (a // (2 ** b))) ^ 6
+        b = ((b ^ 5) ^ (a // (2 ** (b ^ 5)))) ^ 6
+        b = (((a % 8) ^ 5) ^ (a // (2 ** ((a % 8) ^ 5)))) ^ 6
 
-def parallel_solver(reg_b, reg_c, program, num_processes=mp.cpu_count()):
-    total_range = 1 << 32
-    chunk_size = total_range // num_processes
-    stop_flag = mp.Event()
-    processes = []
+    Simplifying above
+        => b = (a % 8) ^ 5 ^ (a // (2 ** ((a % 8) ^ 5))) ^ 5
+        => b = 3 ^ (a % 8) ^ (a // (2 ** ((a % 8) ^ 5)))
 
-    for p in range(num_processes):
-        start = p * chunk_size
-        end = (p + 1) * chunk_size if p < num_processes - 1 else total_range
-        process = mp.Process(target=solve_task, args=(start, end, reg_b, reg_c, program, stop_flag))
-        processes.append(process)
-        process.start()
+    Since we are printing b % 8, the program values should be equal to b % 8
+        => 3 ^ (a % 8) ^ (a // (2 ** ((a % 8) ^ 5))) % 8 = program[j]
 
-    for process in processes:
-        process.join()
+    The program will only halt if a = 0,
+        => a // 8 = 0
+        => initial value of 'a' is in range [0, 8)
 
-
-def solve(reg_a, reg_b, reg_c, program):
-    def get_combo(literal):
-        if literal == 4:
-            return reg_a
-        elif literal == 5:
-            return reg_b
-        elif literal == 6:
-            return reg_c
-        else:
-            return literal
-
-    j = 0
-    i = 0
-    while i < len(program):
-        opcode = program[i]
-        operand = get_combo(program[i + 1])
-
-        if opcode == 0:
-            reg_a = reg_a // (2 ** operand)
-        elif opcode == 1:
-            reg_b = reg_b ^ program[i + 1]
-        elif opcode == 2:
-            reg_b = operand % 8
-        elif opcode == 3:
-            if reg_a != 0:
-                i = program[i + 1]
-                i -= 2
-        elif opcode == 4:
-            reg_b = reg_b ^ reg_c
-        elif opcode == 5:
-            if j == len(program):
-                return True
-            if program[j] != operand % 8:
-                return False
-            j += 1
-        elif opcode == 6:
-            reg_b = reg_a // (2 ** operand)
-        elif opcode == 7:
-            reg_c = reg_a // (2 ** operand)
-        i += 2
-
-    return j == len(program)
+    While we get the expected output, recursively call solve with new 'a' and j+1
+    Using reverse of operation a = a // 8, new 'a' is in range [a * 8, a * 8 + 8)
+    """
+    for i in range(last_a, last_a + 8):
+        if (3 ^ (i % 8) ^ (i // (2 ** ((i % 8) ^ 5)))) % 8 == prg[j]:
+            if j == 0:
+                result.append(i)
+            else:
+                solve(prg, i * 8, j - 1, result)
 
 
 if __name__ == '__main__':
